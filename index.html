@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>AI LoopTube - AI作品専用・収益分配プラットフォーム</title>
+<style>
+  :root {
+    --accent: #00e5ff;
+    --accent-sub: #7c4dff;
+    --bg-black: #08080c;
+    --panel-bg: #14141d;
+    --text-main: #ffffff;
+    --text-muted: #9e9eae;
+    --profit-green: #00e676;
+    --danger-red: #ff1744;
+    --warning-yellow: #ffb300;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg-black);
+    color: var(--text-main);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    overflow: hidden;
+    height: 100dvh;
+    width: 100vw;
+  }
+
+  /* 上部固定バー */
+  .top-header {
+    position: fixed;
+    top: 0; left: 0; width: 100%;
+    background: linear-gradient(180deg, rgba(0,0,0,0.92) 60%, transparent);
+    z-index: 40;
+    padding: 8px 12px 10px;
+  }
+  .header-row1 {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .brand-logo { font-weight: 900; font-size: 1rem; color: var(--accent); }
+  .search-box {
+    flex: 1;
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 20px;
+    padding: 6px 12px;
+    color: #fff;
+    font-size: 0.8rem;
+  }
+  
+  /* カテゴリー横スクロールバー */
+  .category-bar {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .category-bar::-webkit-scrollbar { display: none; }
+  .cat-chip {
+    background: rgba(20, 20, 30, 0.75);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: #ccc;
+    padding: 4px 12px;
+    border-radius: 16px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .cat-chip.active {
+    background: var(--accent);
+    color: #000;
+    font-weight: bold;
+    border-color: var(--accent);
+  }
+
+  /* 画面切り替え */
+  .page-view { display: none; height: 100dvh; width: 100vw; }
+  .page-view.active { display: block; }
+
+  /* 縦スワイプ視聴フィード */
+  .video-feed {
+    height: 100dvh;
+    width: 100vw;
+    overflow-y: scroll;
+    scroll-snap-type: y mandatory;
+    scrollbar-width: none;
+  }
+  .video-feed::-webkit-scrollbar { display: none; }
+
+  .feed-item {
+    height: 100dvh;
+    width: 100vw;
+    scroll-snap-align: start;
+    position: relative;
+    background: #000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .media-content { width: 100%; height: 100%; }
+  .media-content.portrait { object-fit: cover; } 
+  .media-content.landscape { object-fit: contain; background: #050508; } 
+
+  .audio-toggle-btn {
+    position: absolute;
+    top: 90px; right: 14px;
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    cursor: pointer;
+    backdrop-filter: blur(4px);
+    z-index: 25;
+  }
+
+  .ai-verified-badge {
+    position: absolute;
+    top: 90px; left: 14px;
+    background: rgba(0, 0, 0, 0.65);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-size: 0.7rem;
+    padding: 3px 8px;
+    border-radius: 6px;
+    backdrop-filter: blur(4px);
+    z-index: 15;
+  }
+
+  .side-controls {
+    position: absolute;
+    right: 12px; bottom: 95px;
+    display: flex; flex-direction: column; gap: 16px;
+    align-items: center; z-index: 20;
+  }
+  .control-btn {
+    background: rgba(20, 20, 28, 0.7);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: #fff; width: 46px; height: 46px;
+    border-radius: 50%; font-size: 1.15rem;
+    display: flex; justify-content: center; align-items: center;
+    cursor: pointer;
+  }
+  .control-label { font-size: 0.7rem; margin-top: 3px; text-shadow: 0 1px 3px #000; text-align: center; }
+
+  .info-overlay {
+    position: absolute;
+    bottom: 56px; left: 0; width: 100%;
+    padding: 24px 75px 16px 16px;
+    background: linear-gradient(transparent, rgba(0,0,0,0.85) 30%, rgba(0,0,0,0.98));
+    z-index: 15;
+  }
+  .author-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .author-name { font-weight: bold; font-size: 0.95rem; }
+  .monetize-tag {
+    font-size: 0.65rem; background: rgba(0, 230, 118, 0.2);
+    border: 1px solid var(--profit-green); padding: 1px 6px;
+    border-radius: 4px; color: var(--profit-green);
+  }
+  .work-title { font-size: 0.9rem; font-weight: bold; color: #fff; margin-bottom: 4px; }
+  .work-description {
+    font-size: 0.8rem; color: #e0e0e0; background: rgba(0, 0, 0, 0.45);
+    border-left: 2px solid var(--accent); padding: 6px 10px;
+    border-radius: 4px; margin-bottom: 10px; line-height: 1.4; word-break: break-all;
+  }
+  .open-prompt-bar {
+    background: rgba(255,255,255,0.14); border-left: 3px solid var(--accent);
+    padding: 7px 10px; border-radius: 6px; font-size: 0.78rem;
+    display: flex; justify-content: space-between; cursor: pointer;
+  }
+
+  /* ドロワー */
+  .drawer-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 80; display: none;
+  }
+  .bottom-drawer {
+    position: fixed; bottom: -100%; left: 0; width: 100%; max-height: 75dvh;
+    background: var(--panel-bg); border-radius: 20px 20px 0 0; padding: 16px 16px 28px;
+    z-index: 90; transition: bottom 0.3s ease; border-top: 1px solid #333; overflow-y: auto;
+  }
+  .bottom-drawer.open { bottom: 0; }
+  .drawer-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #2a2a35;
+  }
+
+  .comment-list { max-height: 220px; overflow-y: auto; margin-bottom: 12px; }
+  .comment-item {
+    background: #0d0d14; padding: 8px 10px; border-radius: 8px; margin-bottom: 8px;
+    font-size: 0.82rem; display: flex; justify-content: space-between; align-items: center;
+  }
+
+  .sub-page-container { padding: 95px 16px 80px; height: 100dvh; overflow-y: auto; }
+  .card-panel {
+    background: var(--panel-bg); border-radius: 12px; padding: 16px; margin-bottom: 16px; border: 1px solid #252532;
+  }
+  .form-group { margin-bottom: 12px; }
+  .form-label { display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px; }
+  .form-input, .form-select, .form-textarea {
+    width: 100%; background: #0b0b10; border: 1px solid #333; color: #fff; padding: 10px; border-radius: 8px; font-size: 0.85rem;
+  }
+  .form-textarea { resize: vertical; height: 70px; }
+  
+  .form-textarea[readonly] {
+    background: #0f121a;
+    color: #00e5ff;
+    cursor: not-allowed;
+    border-color: rgba(0, 229, 255, 0.3);
+  }
+
+  .file-upload-box {
+    border: 2px dashed var(--accent); padding: 16px; text-align: center; border-radius: 8px;
+    background: rgba(0, 229, 255, 0.05); cursor: pointer; margin-bottom: 6px;
+  }
+  #preview-container { margin-top: 8px; text-align: center; }
+  #preview-container img, #preview-container video { max-height: 120px; border-radius: 6px; object-fit: contain; }
+
+  .primary-btn {
+    width: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-sub));
+    color: #000; font-weight: 900; border: none; padding: 12px; border-radius: 8px; font-size: 0.9rem; cursor: pointer;
+  }
+  .danger-btn {
+    background: rgba(255, 23, 68, 0.2); border: 1px solid var(--danger-red);
+    color: var(--danger-red); font-size: 0.75rem; padding: 6px 10px; border-radius: 6px; cursor: pointer;
+  }
+
+  /* 下部ナビゲーション */
+  .bottom-nav {
+    position: fixed; bottom: 0; left: 0; width: 100%; height: 56px;
+    background: #0c0c12; border-top: 1px solid #222; display: flex; justify-content: space-around; align-items: center; z-index: 50;
+  }
+  .nav-tab {
+    background: none; border: none; color: var(--text-muted); font-size: 0.7rem;
+    display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; position: relative;
+  }
+  .nav-tab.active { color: var(--accent); font-weight: bold; }
+  .alert-dot {
+    position: absolute; top: -2px; right: 6px; background: var(--danger-red); color: #fff;
+    font-size: 0.6rem; width: 16px; height: 16px; border-radius: 50%; display: none; justify-content: center; align-items: center; font-weight: bold;
+  }
+</style>
+</head>
+<body>
+
+<!-- 上部ヘッダー -->
+<header class="top-header">
+  <div class="header-row1">
+    <div class="brand-logo">▶ AI LoopTube</div>
+    <input type="text" id="search-input" class="search-box" placeholder="🔍 プロンプトやタイトルを検索..." oninput="filterFeed()">
+  </div>
+  <div class="category-bar">
+    <button class="cat-chip active" onclick="selectCategory('ALL', this)">すべて</button>
+    <button class="cat-chip" onclick="selectCategory('ショートアニメ', this)">🎞️ ショートアニメ</button>
+    <button class="cat-chip" onclick="selectCategory('AIイラスト', this)">🎨 AIイラスト</button>
+    <button class="cat-chip" onclick="selectCategory('4コマ・漫画', this)">📖 4コマ・漫画</button>
+    <button class="cat-chip" onclick="selectCategory('ミニチュア・背景', this)">🏰 ミニチュア・背景</button>
+  </div>
+</header>
+
+<!-- 画面1：視聴フィード -->
+<main id="view-feed" class="page-view active">
+  <div class="video-feed" id="feed-container"></div>
+</main>
+
+<!-- 画面2：投稿フォーム（AIメタデータ必須化） -->
+<section id="view-upload" class="page-view">
+  <div class="sub-page-container">
+    <h3 style="margin-bottom: 12px;">➕ スマホからAI作品を投稿（収益化対象）</h3>
+    <div class="card-panel">
+      <div class="form-group">
+        <label class="form-label">投稿者アカウント名</label>
+        <input type="text" id="in-author" class="form-input" placeholder="@your_name">
+      </div>
+      <div class="form-group">
+        <label class="form-label">カテゴリー選択</label>
+        <select id="in-category" class="form-select">
+          <option value="ショートアニメ">🎞️ ショートアニメ（音声対応）</option>
+          <option value="AIイラスト">🎨 AIイラスト</option>
+          <option value="4コマ・漫画">📖 4コマ・漫画</option>
+          <option value="ミニチュア・背景">🏰 ミニチュア・背景</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">画面の向き</label>
+        <select id="in-orientation" class="form-select">
+          <option value="portrait">📱 縦画面（画面いっぱいに表示）</option>
+          <option value="landscape">🖥️ 横画面（端が切れずに全体を表示）</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">作品タイトル</label>
+        <input type="text" id="in-title" class="form-input" placeholder="【新作】ルミちゃんのイラスト">
+      </div>
+      <div class="form-group">
+        <label class="form-label">クリエイターの一言・こだわり文章</label>
+        <textarea id="in-desc" class="form-textarea" placeholder="作品の制作秘話やセリフなどを自由に書いてね！"></textarea>
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">AI生成された画像（PNG）または動画ファイル</label>
+        <div class="file-upload-box" onclick="document.getElementById('in-file').click()">
+          📁 <b>タップしてスマホのフォルダから選ぶ</b><br>
+          <span style="font-size:0.7rem; color:#aaa;">(PNGメタデータ必須 / 通常の写真やスクショは拒否されます)</span>
+        </div>
+        <input type="file" id="in-file" accept="image/png,video/mp4" style="display:none;" onchange="previewAndExtract(this)">
+        <div id="preview-container"></div>
+      </div>
+
+      <!-- プロンプト自動抽出専用欄（空欄の場合は投稿不可） -->
+      <div class="form-group">
+        <label class="form-label">抽出されたAIプロンプト（自動入力・変更不可）</label>
+        <textarea id="in-prompt" class="form-textarea" readonly placeholder="AI生成されたPNG画像を選ぶと自動でプロンプトが埋まります..."></textarea>
+        <span style="font-size: 0.72rem; color: var(--warning-yellow); margin-top: 3px; display: block;" id="prompt-status">
+          ⚠️ AI生成のメタデータが含まれない画像（通常の写真・JPEG・スクショ等）は投稿できません。
+        </span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">広告ID（70%収益受取用）</label>
+        <input type="text" id="in-adid" class="form-input" placeholder="admax-xxxx">
+      </div>
+      
+      <button class="primary-btn" onclick="submitWork()">作品を公開する</button>
+    </div>
+  </div>
+</section>
+
+<!-- 画面3：管理者専用スタジオ -->
+<section id="view-admin" class="page-view">
+  <div class="sub-page-container">
+    <div id="admin-lock-screen" class="card-panel" style="text-align: center; padding: 30px 16px;">
+      <h3 style="margin-bottom: 10px; color: var(--accent);">🔒 管理者専用ログイン</h3>
+      <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 16px;">
+        このエリアはサイト管理者（あなた）専用です。パスワードを入力してください。
+      </p>
+      <input type="password" id="admin-pass-input" class="form-input" placeholder="管理者パスワードを入力" style="margin-bottom: 12px; text-align: center;">
+      <button class="primary-btn" onclick="checkAdminPassword()">管理画面に入る</button>
+    </div>
+
+    <div id="admin-dashboard" style="display: none;">
+      <h3 style="margin-bottom: 12px;">🛡️ 運営管理＆違反BANスタジオ</h3>
+      
+      <div class="card-panel">
+        <div style="font-weight:bold; color:var(--profit-green); margin-bottom:6px;">💰 広告自動分配ステータス（稼働中）</div>
+        <p style="font-size:0.8rem; color:var(--text-muted);">
+          ・閲覧時のプロンプト広告：投稿者70% / 運営30%<br>
+          ・スワイプ3回ごとの全画面広告：運営100%
+        </p>
+      </div>
+
+      <div class="card-panel">
+        <div style="font-weight:bold; color:var(--warning-yellow); margin-bottom:8px;">🚨 NGワード・違反報告ログ</div>
+        <div id="admin-report-list" style="font-size:0.8rem; color:#ccc;">現在、違反通知はありません。</div>
+      </div>
+
+      <div class="card-panel">
+        <div style="font-weight:bold; margin-bottom:8px;">🚫 BAN済みアカウント一覧</div>
+        <div id="banned-users-list" style="font-size:0.8rem; color:var(--text-muted);">なし</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ドロワー背景 -->
+<div class="drawer-backdrop" id="backdrop" onclick="closeAllDrawers()"></div>
+
+<!-- プロンプトドロワー -->
+<div class="bottom-drawer" id="prompt-drawer">
+  <div class="drawer-header">
+    <span style="font-weight:bold;">📋 AIプロンプト＆収益還元枠</span>
+    <span onclick="closeAllDrawers()" style="cursor:pointer;">✕</span>
+  </div>
+  <div id="drawer-prompt" style="background:#000; padding:10px; border-radius:8px; font-family:monospace; color:var(--accent); font-size:0.82rem; margin-bottom:12px;"></div>
+  <div id="drawer-ad-box" style="background:#1e1e2c; border:1px dashed #666; padding:12px; border-radius:8px; text-align:center; font-size:0.78rem; margin-bottom:12px;"></div>
+  <button class="primary-btn" onclick="copyPromptText()">プロンプトをコピーする</button>
+</div>
+
+<!-- コメントドロワー -->
+<div class="bottom-drawer" id="comment-drawer">
+  <div class="drawer-header">
+    <span style="font-weight:bold;">💬 コメント（NGワード自動検閲）</span>
+    <span onclick="closeAllDrawers()" style="cursor:pointer;">✕</span>
+  </div>
+  <div class="comment-list" id="comment-list-box"></div>
+  <div style="display:flex; gap:6px; margin-bottom:6px;">
+    <input type="text" id="comment-user" class="form-input" style="width:35%;" placeholder="@名前" value="@Viewer_01">
+    <input type="text" id="comment-text" class="form-input" placeholder="コメントを入力">
+  </div>
+  <button class="primary-btn" onclick="postComment()">コメントを送信</button>
+</div>
+
+<!-- 下部タブメニュー -->
+<nav class="bottom-nav">
+  <button class="nav-tab active" onclick="switchPage('feed', this)">
+    <span style="font-size:1.1rem;">🎬</span><span>視聴フィード</span>
+  </button>
+  <button class="nav-tab" onclick="switchPage('upload', this)">
+    <span style="font-size:1.1rem;">➕</span><span>AI作品投稿</span>
+  </button>
+  <button class="nav-tab" onclick="switchPage('admin', this)">
+    <div class="alert-dot" id="admin-badge">!</div>
+    <span style="font-size:1.1rem;">🛡️</span><span>収益・BAN管理</span>
+  </button>
+</nav>
+
+<script>
+const NG_WORDS = ["死ね", "ゴミ", "パクリ", "きもい", "クソ", "詐欺", "エロサイト", "line://", "http"];
+let bannedUsers = [];
+let adminReports = [];
+let currentCategory = "ALL";
+let activePostIndex = 0;
+let uploadedFileUrl = ""; 
+
+const posts = [
+  {
+    author: "@Lumi_Project",
+    category: "ショートアニメ",
+    orientation: "portrait",
+    title: "【ボイス対応】サイバーパンク調の10秒ループアニメ",
+    description: "夕暮れの街並みをバックに瞬きするアニメーション！右上のボタンで音声（ボイス）をONにして聴いてね✨",
+    media: "https://www.w3schools.com/html/mov_bbb.mp4",
+    prompt: "anime style, 1girl, 10-second loop animation, voice, glowing room, stable diffusion",
+    adId: "creator-ad-001",
+    likes: 420,
+    comments: [{ user: "@Fan_A", text: "ボイスめちゃくちゃ可愛い！" }]
+  }
+];
+
+const ADMIN_PASSWORD = "admin123"; 
+
+function checkAdminPassword() {
+  const inputVal = document.getElementById('admin-pass-input').value;
+  if (inputVal === ADMIN_PASSWORD) {
+    document.getElementById('admin-lock-screen').style.display = 'none';
+    document.getElementById('admin-dashboard').style.display = 'block';
+    updateAdminPanel();
+  } else {
+    alert("❌ パスワードが違います。");
+  }
+}
+
+// 💡 厳格なAI判定：PNGメタデータがない画像は絶対に受け付けない仕組み
+function previewAndExtract(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const promptInput = document.getElementById('in-prompt');
+  const statusSpan = document.getElementById('prompt-status');
+  const previewBox = document.getElementById('preview-container');
+
+  // 動画（MP4）の場合はそのまま許可
+  if (file.type.startsWith('video')) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      uploadedFileUrl = e.target.result;
+      previewBox.innerHTML = `<video src="${uploadedFileUrl}" controls autoplay muted style="max-height:120px; border-radius:6px;"></video>`;
+      promptInput.value = "AI animation loop / generated video";
+      statusSpan.textContent = "✨ 動画ファイルを確認しました。";
+      statusSpan.style.color = "var(--profit-green)";
+    };
+    reader.readAsDataURL(file);
+    return;
+  }
+
+  // 画像の場合：PNG形式かつメタデータがあるか厳密にチェック
+  if (file.type !== 'image/png') {
+    alert("❌ 【エラー】AIイラストはメタデータ（生成情報）が含まれる『PNG形式』の画像のみ投稿できます。");
+    input.value = "";
+    previewBox.innerHTML = "";
+    promptInput.value = "";
+    return;
+  }
+
+  // プレビュー表示用のリーダー
+  const dataUrlReader = new FileReader();
+  dataUrlReader.onload = function(e) {
+    uploadedFileUrl = e.target.result;
+    previewBox.innerHTML = `<img src="${uploadedFileUrl}" style="max-height:120px; border-radius:6px; object-fit:contain;">`;
+  };
+  dataUrlReader.readAsDataURL(file);
+
+  // メタデータ解析用のリーダー
+  const bufferReader = new FileReader();
+  bufferReader.onload = function(e) {
+    extractPngMetadata(e.target.result);
+  };
+  bufferReader.readAsArrayBuffer(file);
+}
+
+// PNGバイナリからメタデータを解析し、無ければ投稿を拒否する処理
+function extractPngMetadata(buffer) {
+  const view = new DataView(buffer);
+  let offset = 8;
+  let foundPrompt = "";
+
+  try {
+    while (offset < view.byteLength) {
+      const length = view.getUint32(offset);
+      const type = String.fromCharCode(
+        view.getUint8(offset + 4),
+        view.getUint8(offset + 5),
+        view.getUint8(offset + 6),
+        view.getUint8(offset + 7)
+      );
+
+      if (type === 'tEXt' || type === 'iTXt') {
+        const chunkData = new Uint8Array(buffer, offset + 8, length);
+        const textDecoder = new TextDecoder('utf-8');
+        const textString = textDecoder.decode(chunkData);
+        
+        // 生成プロンプトの痕跡があれば検出
+        if (textString.includes('parameters') || textString.includes('masterpiece') || textString.includes('Negative prompt') || textString.length > 5) {
+          foundPrompt = textString;
+          break;
+        }
+      }
+      offset += 12 + length;
+    }
+  } catch(err) {
+    console.log("Metadata parse error:", err);
+  }
+
+  const promptInput = document.getElementById('in-prompt');
+  const statusSpan = document.getElementById('prompt-status');
+
+  if (foundPrompt) {
+    promptInput.value = foundPrompt;
+    statusSpan.textContent = "✨ AI生成のメタデータを正常に検出し自動入力しました！";
+    statusSpan.style.color = "var(--profit-green)";
+  } else {
+    // メタデータがない普通のPNG画像やスクショの場合
+    promptInput.value = "";
+    uploadedFileUrl = "";
+    document.getElementById('preview-container').innerHTML = "";
+    alert("❌ 【投稿拒否】このPNG画像にはAI生成のメタデータ（プロンプト情報）が含まれていません。通常の写真やスクショは投稿できません。");
+    statusSpan.textContent = "⚠️ メタデータが検出されなかったため拒否されました。本物のAI画像を選んでください。";
+    statusSpan.style.color = "var(--danger-red)";
+  }
+}
+
+function renderFeed() {
+  const container = document.getElementById('feed-container');
+  const keyword = document.getElementById('search-input').value.toLowerCase();
+  container.innerHTML = '';
+
+  posts.forEach((post, idx) => {
+    if (!post.isAdSlide && bannedUsers.includes(post.author)) return;
+
+    if (!post.isAdSlide) {
+      const matchCat = (currentCategory === 'ALL' || post.category === currentCategory);
+      const matchKey = post.title.toLowerCase().includes(keyword) ||
+                       post.prompt.toLowerCase().includes(keyword) ||
+                       post.author.toLowerCase().includes(keyword) ||
+                       (post.description && post.description.toLowerCase().includes(keyword));
+      if (!matchCat || !matchKey) return;
+    }
+
+    const slide = document.createElement('div');
+    slide.className = 'feed-item';
+
+    if (post.isAdSlide) {
+      slide.innerHTML = `
+        <div class="card-panel" style="width:88%; max-width:360px; text-align:center;">
+          <span style="background:#ffb300; color:#000; font-size:0.7rem; font-weight:bold; padding:2px 8px; border-radius:4px;">SPONSORED（運営100%収益枠）</span>
+          <h3 style="margin:12px 0 8px;">おすすめAIツール広告</h3>
+          <p style="font-size:0.8rem; color:#aaa; margin-bottom:14px;">
+            スワイプの途中に挟まる運営専用の収益枠です。
+          </p>
+          <button class="primary-btn" onclick="alert('広告リンク先へ移動します')">詳細を見る ＞</button>
+        </div>
+      `;
+    } else {
+      const isVideo = post.media.toLowerCase().endsWith('.mp4') || post.media.startsWith('data:video');
+      const fitClass = post.orientation === 'landscape' ? 'landscape' : 'portrait';
+
+      let mediaTag = "";
+      let audioToggleTag = "";
+
+      if (isVideo) {
+        mediaTag = `<video id="video-${idx}" class="media-content ${fitClass}" src="${post.media}" autoplay loop muted playsinline></video>`;
+        audioToggleTag = `<button class="audio-toggle-btn" id="audio-btn-${idx}" onclick="toggleAudio(${idx})">🔇 ボイスOFF</button>`;
+      } else {
+        mediaTag = `<img class="media-content ${fitClass}" src="${post.media}" alt="AI Work">`;
+      }
+
+      slide.innerHTML = `
+        ${mediaTag}
+        ${audioToggleTag}
+        <div class="ai-verified-badge">🤖 AI生成認証済｜${post.category}</div>
+        
+        <div class="side-controls">
+          <div>
+            <button class="control-btn" onclick="likePost(${idx}, this)">❤️</button>
+            <div class="control-label">${post.likes}</div>
+          </div>
+          <div>
+            <button class="control-btn" onclick="openCommentDrawer(${idx})">💬</button>
+            <div class="control-label">${post.comments.length}</div>
+          </div>
+          <div>
+            <button class="control-btn" onclick="openPromptDrawer(${idx})">📋</button>
+            <div class="control-label">呪文</div>
+          </div>
+        </div>
+
+        <div class="info-overlay">
+          <div class="author-row">
+            <span class="author-name">${post.author}</span>
+            <span class="monetize-tag">💰 収益70%還元中</span>
+          </div>
+          <div class="work-title">${post.title}</div>
+          <div class="work-description">${post.description || ''}</div>
+          <div class="open-prompt-bar" onclick="openPromptDrawer(${idx})">
+            <span>⚡ プロンプトを見る（広告収益分配）</span>
+            <span style="color:var(--accent);">開く ▲</span>
+          </div>
+        </div>
+      `;
+    }
+    container.appendChild(slide);
+  });
+}
+
+function toggleAudio(idx) {
+  const video = document.getElementById(`video-${idx}`);
+  const btn = document.getElementById(`audio-btn-${idx}`);
+  if (video) {
+    video.muted = !video.muted;
+    if (video.muted) {
+      btn.textContent = "🔇 ボイスOFF";
+      btn.style.borderColor = "var(--accent)";
+    } else {
+      btn.textContent = "🔊 ボイスON";
+      btn.style.borderColor = "var(--profit-green)";
+    }
+  }
+}
+
+function selectCategory(cat, btn) {
+  currentCategory = cat;
+  document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  renderFeed();
+}
+
+function filterFeed() { renderFeed(); }
+
+function openPromptDrawer(idx) {
+  activePostIndex = idx;
+  const post = posts[idx];
+  document.getElementById('drawer-prompt').textContent = post.prompt;
+
+  const adBox = document.getElementById('drawer-ad-box');
+  if (Math.random() < 0.7) {
+    adBox.innerHTML = `<b style="color:var(--profit-green);">[投稿者70%還元枠]</b><br>投稿者（${post.author}）の広告IDが表示されています。`;
+  } else {
+    adBox.innerHTML = `<b style="color:var(--accent);">[運営30%収益枠]</b><br>サイト運営者（あなた）の広告が表示されています！チャリン💰`;
+  }
+
+  document.getElementById('backdrop').style.display = 'block';
+  document.getElementById('prompt-drawer').classList.add('open');
+}
+
+function openCommentDrawer(idx) {
+  activePostIndex = idx;
+  renderComments();
+  document.getElementById('backdrop').style.display = 'block';
+  document.getElementById('comment-drawer').classList.add('open');
+}
+
+function renderComments() {
+  const box = document.getElementById('comment-list-box');
+  const post = posts[activePostIndex];
+  box.innerHTML = '';
+
+  const validComments = post.comments.filter(c => !bannedUsers.includes(c.user));
+  if (validComments.length === 0) {
+    box.innerHTML = `<div style="color:#777; font-size:0.8rem;">まだコメントはありません。</div>`;
+    return;
+  }
+
+  validComments.forEach(c => {
+    box.innerHTML += `
+      <div class="comment-item">
+        <div><b>${c.user}:</b> ${c.text}</div>
+      </div>
+    `;
+  });
+}
+
+function postComment() {
+  const user = document.getElementById('comment-user').value.trim() || "@Anon";
+  const text = document.getElementById('comment-text').value.trim();
+  if (!text) return;
+
+  if (bannedUsers.includes(user)) {
+    alert("🚫 BANされているためコメントできません。");
+    return;
+  }
+
+  const hitNg = NG_WORDS.find(word => text.toLowerCase().includes(word));
+  if (hitNg) {
+    alert(`⚠️ 不適切なワード（「${hitNg}」）が検知されたためブロックし、管理画面へ通知しました。`);
+    adminReports.unshift({
+      id: Date.now(),
+      user: user,
+      reason: `NGワード検知: "${text}"`,
+      time: new Date().toLocaleTimeString()
+    });
+    updateAdminPanel();
+    document.getElementById('comment-text').value = '';
+    return;
+  }
+
+  posts[activePostIndex].comments.push({ user, text });
+  document.getElementById('comment-text').value = '';
+  renderComments();
+  renderFeed();
+}
+
+function banUser(userName) {
+  if (!confirm(`アカウント「${userName}」を永久凍結（BAN）しますか？`)) return;
+  if (!bannedUsers.includes(userName)) bannedUsers.push(userName);
+  updateAdminPanel();
+  closeAllDrawers();
+  renderFeed();
+  alert(`🚫 ${userName} をBANしました。`);
+}
+
+function dismissReport(reportId) {
+  adminReports = adminReports.filter(r => r.id !== reportId);
+  updateAdminPanel();
+  alert("✨ 警告を見逃し（不問）として処理しました。");
+}
+
+function updateAdminPanel() {
+  const badge = document.getElementById('admin-badge');
+  const repList = document.getElementById('admin-report-list');
+  const banList = document.getElementById('banned-users-list');
+
+  if (adminReports.length > 0) {
+    badge.style.display = 'flex';
+    badge.textContent = adminReports.length;
+    repList.innerHTML = adminReports.map(r => `
+      <div style="background:#0b0b10; padding:10px; border-radius:6px; margin-bottom:8px; border-left:3px solid var(--warning-yellow);">
+        <div><b>${r.user}</b> (${r.time})</div>
+        <div style="color:#aaa; margin:4px 0; font-size:0.75rem;">${r.reason}</div>
+        <div style="display:flex; gap:6px; margin-top:6px;">
+          <button class="primary-btn" style="background:var(--warning-yellow); color:#000; padding:6px; font-size:0.75rem;" onclick="dismissReport(${r.id})">今回は見逃す</button>
+          <button class="danger-btn" onclick="banUser('${r.user}')">アカウントをBAN</button>
+        </div>
+      </div>
+    `).join('');
+  } else {
+    badge.style.display = 'none';
+    repList.innerHTML = "現在、違反通知はありません。";
+  }
+
+  banList.textContent = bannedUsers.length > 0 ? bannedUsers.join(', ') : 'なし';
+}
+
+function submitWork() {
+  const prompt = document.getElementById('in-prompt').value.trim();
+  const author = document.getElementById('in-author').value.trim() || "@AI_Creator";
+
+  if (!uploadedFileUrl) {
+    alert("⚠️ AI生成されたPNG画像または動画ファイルを選択してください。");
+    return;
+  }
+  if (!prompt) {
+    alert("⚠️ メタデータが検出されないため投稿できません。本物のAI生成画像を選んでください。");
+    return;
+  }
+
+  posts.unshift({
+    author: author,
+    category: document.getElementById('in-category').value,
+    orientation: document.getElementById('in-orientation').value,
+    title: document.getElementById('in-title').value || "新作AI作品",
+    description: document.getElementById('in-desc').value || "",
+    media: uploadedFileUrl,
+    prompt: prompt,
+    adId: document.getElementById('in-adid').value || "未設定",
+    likes: 1,
+    comments: []
+  });
+
+  uploadedFileUrl = "";
+  document.getElementById('preview-container').innerHTML = "";
+  document.getElementById('in-title').value = "";
+  document.getElementById('in-desc').value = "";
+  document.getElementById('in-prompt').value = "";
+  document.getElementById('prompt-status').textContent = "⚠️ AI生成のメタデータが含まれない画像（通常の写真・JPEG・スクショ等）は投稿できません。";
+
+  renderFeed();
+  switchPage('feed', document.querySelectorAll('.nav-tab')[0]);
+  alert("✨ AI作品が正常に公開されました！収益還元スタートです。");
+}
+
+function likePost(idx, btn) {
+  posts[idx].likes++;
+  btn.nextElementSibling.textContent = posts[idx].likes;
+  btn.style.background = "#ff1744";
+}
+
+function copyPromptText() {
+  navigator.clipboard.writeText(posts[activePostIndex].prompt);
+  alert("プロンプトをコピーしました！");
+  closeAllDrawers();
+}
+
+function closeAllDrawers() {
+  document.getElementById('backdrop').style.display = 'none';
+  document.querySelectorAll('.bottom-drawer').forEach(d => d.classList.remove('open'));
+}
+
+function switchPage(pageId, btn) {
+  document.querySelectorAll('.page-view').forEach(p => p.classList.remove('active'));
+  document.getElementById('view-' + pageId).classList.add('active');
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+}
+
+renderFeed();
+</script>
+</body>
+</html>
